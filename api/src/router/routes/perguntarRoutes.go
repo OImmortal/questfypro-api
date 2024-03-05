@@ -14,7 +14,7 @@ var perguntas = []Rota{
 	{
 		Uri:    "/perguntas",
 		Metodo: http.MethodGet,
-		Funcao: func(w http.ResponseWriter, r *http.Request) {},
+		Funcao: controller.BuscarPergunta,
 	},
 	{
 		Uri:    "/perguntas/{perguntaID}",
