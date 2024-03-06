@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 )
 
 func CriarPergunta(w http.ResponseWriter, r *http.Request) {
@@ -30,14 +31,14 @@ func CriarPergunta(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	statment, erro := db.Prepare("insert into perguntas (title, descrpt) values (?, ?)")
+	statment, erro := db.Prepare("insert into perguntas (title, descrpt, categoria_id) values (?, ?, ?)")
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
 		return
 	}
 
 	defer statment.Close()
-	resultado, erro := statment.Exec(pergunta.Title, pergunta.Desc)
+	resultado, erro := statment.Exec(pergunta.Title, pergunta.Desc, pergunta.CategoriaId)
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
 		return
@@ -76,22 +77,23 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	linhas, erro := db.Query("select * from perguntas inner join respostas on id_pergunta = perguntas.id")
+	linhas, erro := db.Query("SELECT perguntas.id, title, descrpt, categoria_id, respostas.id, respostas.description, correta, categoria from perguntas inner join respostas on id_pergunta = perguntas.id INNER JOIN categorias ON categoria_id = categorias.id_categoria;")
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
 
 	defer linhas.Close()
 
 	perguntas := make(map[int]models.Pergunta)
 
 	for linhas.Next() {
-		var perguntaID int
-		var perguntaTitle, perguntaDesc string
-		var respostaID int
-		var respostaDesc string
+		var perguntaID, perguntaCatId, respostaID int
+		var perguntaTitle, perguntaDesc, respostaDesc, categoria string
 		var respostaCorreta bool
-		var idPerguntaResposta int
 
 		// Ler os valores da linha atual
-		if erro := linhas.Scan(&perguntaID, &perguntaTitle, &perguntaDesc, &respostaID, &idPerguntaResposta, &respostaDesc, &respostaCorreta); erro != nil {
+		if erro := linhas.Scan(&perguntaID, &perguntaTitle, &perguntaDesc, &perguntaCatId, &respostaID, &respostaDesc, &respostaCorreta, &categoria); erro != nil {
 			res.Erro(w, http.StatusBadRequest, erro)
 			return
 		}
@@ -99,10 +101,11 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 		// Se a pergunta ainda não foi adicionada ao mapa, adicioná-la
 		if _, ok := perguntas[perguntaID]; !ok {
 			perguntas[perguntaID] = models.Pergunta{
-				Id:       uint(perguntaID),
-				Title:    perguntaTitle,
-				Desc:     perguntaDesc,
-				Resposta: make([]models.Resposta, 0),
+				Id:            uint(perguntaID),
+				Title:         perguntaTitle,
+				Desc:          perguntaDesc,
+				CategoriaNome: categoria,
+				Resposta:      make([]models.Resposta, 0),
 			}
 		}
 
@@ -124,5 +127,38 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 
 	// Retornar as perguntas como JSON
 	res.JSON(w, http.StatusOK, perguntasSlice)
+
+}
+
+func BuscarPerguntaCategoria(w http.ResponseWriter, r *http.Request) {
+	categoria := strings.ToLower(r.URL.Query().Get("categoria"))
+
+	db, erro := database.Conectar()
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	defer db.Close()
+
+	linhas, erro := db.Query(
+		"select id, title, descrpt, resposta.id, respostas.description, correta from perguntas inner join respostas on id_pergunta = perguntas.id where categoria = ?",
+		categoria,
+	)
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	defer linhas.Close()
+
+	// perguntas := make(map[int]models.Pergunta)
+
+	// for linhas.Next() {
+	// 	var IdPergunta, IdResposta uint
+	// 	var TitlePergunta, DescPergunta, DescResposta string
+	// 	var CorretaResposta bool
+
+	// }
 
 }

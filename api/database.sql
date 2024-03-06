@@ -5,11 +5,17 @@ USE questfypro;
 CREATE TABLE IF NOT EXISTS perguntas(
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	title VARCHAR(255) NOT NULL,
-	descrpt TEXT NOT NULL
+	descrpt TEXT NOT NULL,
+	categoria INT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS respostas(
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	id_pergunta INT NOT NULL,
 	correta BOOL NOT NULL
+);
+
+CREATE TABLE if NOT EXISTS categorias(
+	id_categoria INT AUTO_INCREMENT PRIMARY KEY,
+	categoria VARCHAR(255) NOT NULL
 );
