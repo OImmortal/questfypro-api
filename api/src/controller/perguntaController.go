@@ -69,10 +69,29 @@ func CriarPergunta(w http.ResponseWriter, r *http.Request) {
 }
 
 func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
+
+	categoria := strings.ToLower(r.URL.Query().Get("categoria"))
+	if categoria == "" {
+		perguntasSlice, erro := selectAll(w)
+		if erro != nil {
+			res.Erro(w, http.StatusBadRequest, erro)
+		}
+		res.JSON(w, http.StatusOK, perguntasSlice)
+	} else {
+		perguntasSlice, erro := selectByCategoria(w, categoria)
+		if erro != nil {
+			res.Erro(w, http.StatusBadRequest, erro)
+		}
+		res.JSON(w, http.StatusOK, perguntasSlice)
+	}
+
+}
+
+func selectAll(w http.ResponseWriter) ([]models.Pergunta, error) {
 	db, erro := database.Conectar()
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
-		return
+		return nil, erro
 	}
 
 	defer db.Close()
@@ -80,7 +99,7 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 	linhas, erro := db.Query("SELECT perguntas.id, title, descrpt, categoria_id, respostas.id, respostas.description, correta, categoria from perguntas inner join respostas on id_pergunta = perguntas.id INNER JOIN categorias ON categoria_id = categorias.id_categoria;")
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
-		return
+		return nil, erro
 	}
 
 	defer linhas.Close()
@@ -95,7 +114,7 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 		// Ler os valores da linha atual
 		if erro := linhas.Scan(&perguntaID, &perguntaTitle, &perguntaDesc, &perguntaCatId, &respostaID, &respostaDesc, &respostaCorreta, &categoria); erro != nil {
 			res.Erro(w, http.StatusBadRequest, erro)
-			return
+			return nil, erro
 		}
 
 		// Se a pergunta ainda não foi adicionada ao mapa, adicioná-la
@@ -125,40 +144,64 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 		perguntasSlice = append(perguntasSlice, pergunta)
 	}
 
-	// Retornar as perguntas como JSON
-	res.JSON(w, http.StatusOK, perguntasSlice)
-
+	return perguntasSlice, nil
 }
 
-func BuscarPerguntaCategoria(w http.ResponseWriter, r *http.Request) {
-	categoria := strings.ToLower(r.URL.Query().Get("categoria"))
-
+func selectByCategoria(w http.ResponseWriter, categoria string) ([]models.Pergunta, error) {
 	db, erro := database.Conectar()
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
-		return
+		return nil, erro
 	}
 
 	defer db.Close()
 
 	linhas, erro := db.Query(
-		"select id, title, descrpt, resposta.id, respostas.description, correta from perguntas inner join respostas on id_pergunta = perguntas.id where categoria = ?",
+		"SELECT perguntas.id, title, descrpt, respostas.id, respostas.description, correta from perguntas inner join respostas on id_pergunta = perguntas.id INNER JOIN categorias ON categoria_id = categorias.id_categoria WHERE categorias.categoria = ?",
 		categoria,
 	)
 	if erro != nil {
 		res.Erro(w, http.StatusBadRequest, erro)
-		return
+		return nil, erro
 	}
 
 	defer linhas.Close()
 
-	// perguntas := make(map[int]models.Pergunta)
+	perguntas := make(map[int]models.Pergunta)
 
-	// for linhas.Next() {
-	// 	var IdPergunta, IdResposta uint
-	// 	var TitlePergunta, DescPergunta, DescResposta string
-	// 	var CorretaResposta bool
+	for linhas.Next() {
+		var IdPergunta, IdResposta int
+		var TitlePergunta, DescPergunta, DescResposta string
+		var CorretaResposta bool
 
-	// }
+		if erro = linhas.Scan(&IdPergunta, &TitlePergunta, &DescPergunta, &IdResposta, &DescResposta, &CorretaResposta); erro != nil {
+			res.Erro(w, http.StatusBadRequest, erro)
+			return nil, erro
+		}
 
+		if _, ok := perguntas[IdPergunta]; !ok {
+			perguntas[IdPergunta] = models.Pergunta{
+				Id:       uint(IdPergunta),
+				Title:    TitlePergunta,
+				Desc:     DescPergunta,
+				Resposta: make([]models.Resposta, 0),
+			}
+		}
+
+		pergunta := perguntas[IdPergunta]
+		pergunta.Resposta = append(pergunta.Resposta, models.Resposta{
+			Id:      uint(IdResposta),
+			Desc:    DescResposta,
+			Correta: CorretaResposta,
+		})
+
+		perguntas[IdPergunta] = pergunta
+	}
+
+	var perguntaSlice []models.Pergunta
+	for _, pergunta := range perguntas {
+		perguntaSlice = append(perguntaSlice, pergunta)
+	}
+
+	return perguntaSlice, nil
 }

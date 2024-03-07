@@ -16,9 +16,4 @@ var perguntas = []Rota{
 		Metodo: http.MethodGet,
 		Funcao: controller.BuscarPergunta,
 	},
-	{
-		Uri:    "/perguntas",
-		Metodo: http.MethodGet,
-		Funcao: controller.BuscarPerguntaCategoria,
-	},
 }

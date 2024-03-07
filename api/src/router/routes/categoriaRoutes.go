@@ -11,4 +11,9 @@ var categorias = []Rota{
 		Metodo: http.MethodPost,
 		Funcao: controller.CriarCategoria,
 	},
+	{
+		Uri:    "/categorias",
+		Metodo: http.MethodGet,
+		Funcao: controller.BuscarCategoria,
+	},
 }
