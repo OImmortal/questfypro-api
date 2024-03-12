@@ -16,4 +16,9 @@ var perguntas = []Rota{
 		Metodo: http.MethodGet,
 		Funcao: controller.BuscarPergunta,
 	},
+	{
+		Uri:    "/perguntas/{idPergunta}",
+		Metodo: http.MethodDelete,
+		Funcao: controller.DeletePergunta,
+	},
 }

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS perguntas(
 CREATE TABLE IF NOT EXISTS respostas(
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	id_pergunta INT NOT NULL,
+	description VARCHAR(255) not NULL,
 	correta BOOL NOT NULL
 );
 

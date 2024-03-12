@@ -7,7 +7,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 func CriarPergunta(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +88,37 @@ func BuscarPergunta(w http.ResponseWriter, r *http.Request) {
 		res.JSON(w, http.StatusOK, perguntasSlice)
 	}
 
+}
+
+func DeletePergunta(w http.ResponseWriter, r *http.Request) {
+	parametros := mux.Vars(r)
+	idPergunta, erro := strconv.ParseUint(parametros["idPergunta"], 10, 64)
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	db, erro := database.Conectar()
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	defer db.Close()
+
+	statment, erro := db.Prepare("delete from perguntas where id = ?")
+	if erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	defer statment.Close()
+	if _, erro = statment.Exec(idPergunta); erro != nil {
+		res.Erro(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	res.JSON(w, http.StatusOK, "Pergunta deletada com sucesso")
 }
 
 func selectAll(w http.ResponseWriter) ([]models.Pergunta, error) {
